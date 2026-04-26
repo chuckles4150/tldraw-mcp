@@ -134,6 +134,22 @@ Create a green ellipse with id "api" labeled "API".
 Connect "database" to "api" with a red dashed arrow.
 ```
 
+### Reviewing Mode
+
+Claude can add review markup with:
+
+- `addStickyNote`: creates a tldraw sticky note
+- `addComment`: creates a comment callout, optionally next to a target shape id
+- `highlightArea`: draws a highlight around a target shape id or explicit area
+
+Example:
+
+```text
+Review this diagram. Add an open comment on "database" saying "Confirm retention policy".
+Highlight "api" in yellow.
+Add a sticky note at the top saying "Review pass: security concerns".
+```
+
 ### Verifying Event Flow
 
 To verify that events are flowing correctly through the system:

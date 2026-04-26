@@ -35,6 +35,26 @@ function definedStyles(styles: Record<string, unknown>) {
   );
 }
 
+function makeBoxHighlightSegments(width: number, height: number) {
+  return [
+    {
+      type: "free",
+      points: [
+        { x: 0, y: 0, z: 0.5 },
+        { x: width, y: 0, z: 0.5 },
+        { x: width, y: height, z: 0.5 },
+        { x: 0, y: height, z: 0.5 },
+        { x: 0, y: 0, z: 0.5 },
+      ],
+    },
+  ];
+}
+
+function getTargetBounds(editor: Editor, targetId?: string) {
+  if (!targetId) return null;
+  return editor.getShapePageBounds(targetId as TLShapeId);
+}
+
 export default function TldrawEditor() {
   const editorRef = useRef<Editor | null>(null);
   const shapesRef = useRef<Record<string, TLShapeId>>({});
@@ -268,6 +288,137 @@ export default function TldrawEditor() {
             }
 
             console.log("Created flowchart step with id:", id);
+            break;
+          }
+
+          case "addStickyNote": {
+            const { id: refId, x, y, text, color, labelColor, size } =
+              operation.payload;
+            const id = createLocalShapeId();
+
+            editor.createShape({
+              id,
+              type: "note",
+              x,
+              y,
+              props: {
+                richText: toRichText(text),
+                ...definedStyles({
+                  color: color || "yellow",
+                  labelColor,
+                  size,
+                }),
+              },
+            });
+
+            if (refId) {
+              shapesRef.current[refId] = id;
+            }
+
+            console.log("Created sticky note with id:", id);
+            break;
+          }
+
+          case "addComment": {
+            const {
+              id: refId,
+              targetId,
+              x,
+              y,
+              text,
+              author,
+              status,
+              color,
+            } = operation.payload;
+            const targetBounds = getTargetBounds(
+              editor,
+              targetId ? shapesRef.current[targetId] || targetId : undefined
+            );
+            const id = createLocalShapeId();
+            const commentText = [
+              status === "resolved" ? "[Resolved]" : "[Open]",
+              author ? `${author}:` : "Comment:",
+              text,
+            ].join(" ");
+
+            editor.createShape({
+              id,
+              type: "note",
+              x: x ?? (targetBounds ? targetBounds.maxX + 24 : 80),
+              y: y ?? (targetBounds ? targetBounds.y : 80),
+              props: {
+                richText: toRichText(commentText),
+                ...definedStyles({
+                  color: color || (status === "resolved" ? "green" : "orange"),
+                  labelColor: status === "resolved" ? "green" : "black",
+                  size: "s",
+                }),
+              },
+              meta: {
+                reviewType: "comment",
+                targetId: targetId || "",
+                status: status || "open",
+                author: author || "",
+              },
+            });
+
+            if (refId) {
+              shapesRef.current[refId] = id;
+            }
+
+            console.log("Created comment with id:", id);
+            break;
+          }
+
+          case "highlightArea": {
+            const {
+              id: refId,
+              targetId,
+              x,
+              y,
+              width,
+              height,
+              color,
+              size,
+            } = operation.payload;
+            const targetBounds = getTargetBounds(
+              editor,
+              targetId ? shapesRef.current[targetId] || targetId : undefined
+            );
+            const padding = targetBounds ? 12 : 0;
+            const highlightX = x ?? (targetBounds ? targetBounds.x - padding : 0);
+            const highlightY = y ?? (targetBounds ? targetBounds.y - padding : 0);
+            const highlightW =
+              width ?? (targetBounds ? targetBounds.w + padding * 2 : 160);
+            const highlightH =
+              height ?? (targetBounds ? targetBounds.h + padding * 2 : 80);
+            const id = createLocalShapeId();
+
+            editor.createShape({
+              id,
+              type: "highlight",
+              x: highlightX,
+              y: highlightY,
+              props: {
+                segments: makeBoxHighlightSegments(highlightW, highlightH),
+                isComplete: true,
+                isPen: false,
+                ...definedStyles({
+                  color: color || "yellow",
+                  size: size || "xl",
+                }),
+              },
+              meta: {
+                reviewType: "highlight",
+                targetId: targetId || "",
+              },
+            });
+
+            if (refId) {
+              shapesRef.current[refId] = id;
+            }
+
+            console.log("Created highlight with id:", id);
             break;
           }
 

@@ -269,6 +269,133 @@ server.tool(
   }
 );
 
+server.tool(
+  "addStickyNote",
+  {
+    id: z
+      .string()
+      .optional()
+      .describe("A reusable reference id for the sticky note"),
+    x: z.number(),
+    y: z.number(),
+    text: z.string(),
+    color: colorSchema.describe("Sticky note color"),
+    labelColor: colorSchema.describe("Sticky note text color"),
+    size: sizeSchema.describe("Sticky note text size"),
+  },
+  async ({ id, x, y, text, color, labelColor, size }) => {
+    broadcastOperation({
+      type: "addStickyNote",
+      payload: {
+        id,
+        x,
+        y,
+        text,
+        color,
+        labelColor,
+        size,
+      },
+    });
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Added sticky note${id ? ` with reference id "${id}"` : ""}`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "addComment",
+  {
+    id: z
+      .string()
+      .optional()
+      .describe("A reusable reference id for this comment"),
+    targetId: z
+      .string()
+      .optional()
+      .describe("Reference id of the shape being reviewed"),
+    x: z.number().optional(),
+    y: z.number().optional(),
+    text: z.string(),
+    author: z.string().optional(),
+    status: z.enum(["open", "resolved"]).optional(),
+    color: colorSchema.describe("Comment note color"),
+  },
+  async ({ id, targetId, x, y, text, author, status, color }) => {
+    broadcastOperation({
+      type: "addComment",
+      payload: {
+        id,
+        targetId,
+        x,
+        y,
+        text,
+        author,
+        status: status || "open",
+        color,
+      },
+    });
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Added ${status || "open"} comment${targetId ? ` on ${targetId}` : ""}`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "highlightArea",
+  {
+    id: z
+      .string()
+      .optional()
+      .describe("A reusable reference id for this highlight"),
+    targetId: z
+      .string()
+      .optional()
+      .describe("Reference id of the shape to highlight"),
+    x: z.number().optional(),
+    y: z.number().optional(),
+    width: z.number().optional(),
+    height: z.number().optional(),
+    color: colorSchema.describe("Highlight color"),
+    size: sizeSchema.describe("Highlight stroke size"),
+  },
+  async ({ id, targetId, x, y, width, height, color, size }) => {
+    broadcastOperation({
+      type: "highlightArea",
+      payload: {
+        id,
+        targetId,
+        x,
+        y,
+        width,
+        height,
+        color,
+        size,
+      },
+    });
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Added highlight${targetId ? ` around ${targetId}` : ""}`,
+        },
+      ],
+    };
+  }
+);
+
 server.tool("getSnapshot", {}, async () => {
   return new Promise((resolve) => {
     const requestId = `snapshot-${Date.now()}`;
