@@ -28,17 +28,73 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
+const colorSchema = z
+  .enum([
+    "black",
+    "grey",
+    "light-violet",
+    "violet",
+    "blue",
+    "light-blue",
+    "yellow",
+    "orange",
+    "green",
+    "light-green",
+    "light-red",
+    "red",
+    "white",
+  ])
+  .optional();
+const fillSchema = z.enum(["none", "semi", "solid", "pattern", "fill"]).optional();
+const dashSchema = z.enum(["draw", "solid", "dashed", "dotted"]).optional();
+const sizeSchema = z.enum(["s", "m", "l", "xl"]).optional();
+const arrowheadSchema = z
+  .enum([
+    "arrow",
+    "triangle",
+    "square",
+    "dot",
+    "pipe",
+    "diamond",
+    "inverted",
+    "bar",
+    "none",
+  ])
+  .optional();
+
 server.tool(
   "createShape",
   {
+    id: z
+      .string()
+      .optional()
+      .describe("A reusable reference id, e.g. database or api, for later arrows"),
     type: z.enum(["rectangle", "ellipse", "triangle", "diamond"]),
     x: z.number(),
     y: z.number(),
     width: z.number(),
     height: z.number(),
     text: z.string().optional(),
+    color: colorSchema.describe("Stroke color"),
+    labelColor: colorSchema.describe("Text label color"),
+    fill: fillSchema.describe("Fill style"),
+    dash: dashSchema.describe("Stroke style"),
+    size: sizeSchema.describe("Stroke/text size"),
   },
-  async ({ type, x, y, width, height, text }) => {
+  async ({
+    id,
+    type,
+    x,
+    y,
+    width,
+    height,
+    text,
+    color,
+    labelColor,
+    fill,
+    dash,
+    size,
+  }) => {
     logToFile(
       `Creating shape: type=${type}, x=${x}, y=${y}, width=${width}, height=${height}, text=${
         text || ""
@@ -47,12 +103,18 @@ server.tool(
     broadcastOperation({
       type: "createShape",
       payload: {
+        id,
         shapeType: type,
         x,
         y,
         width,
         height,
         text: text || "",
+        color,
+        labelColor,
+        fill,
+        dash,
+        size,
       },
     });
 
@@ -60,7 +122,7 @@ server.tool(
       content: [
         {
           type: "text",
-          text: `Created a ${type} at position (${x}, ${y})`,
+          text: `Created a ${type}${id ? ` with reference id "${id}"` : ""} at position (${x}, ${y})`,
         },
       ],
     };
@@ -73,14 +135,33 @@ server.tool(
     fromId: z.string(),
     toId: z.string(),
     arrowType: z.enum(["straight", "curved", "orthogonal"]).optional(),
+    color: colorSchema.describe("Arrow color"),
+    dash: dashSchema.describe("Arrow line style"),
+    size: sizeSchema.describe("Arrow stroke size"),
+    arrowheadStart: arrowheadSchema.describe("Start arrowhead"),
+    arrowheadEnd: arrowheadSchema.describe("End arrowhead"),
   },
-  async ({ fromId, toId, arrowType }) => {
+  async ({
+    fromId,
+    toId,
+    arrowType,
+    color,
+    dash,
+    size,
+    arrowheadStart,
+    arrowheadEnd,
+  }) => {
     broadcastOperation({
       type: "connectShapes",
       payload: {
         fromId,
         toId,
         arrowType: arrowType || "straight",
+        color,
+        dash,
+        size,
+        arrowheadStart,
+        arrowheadEnd,
       },
     });
 
@@ -102,8 +183,10 @@ server.tool(
     y: z.number(),
     text: z.string(),
     fontSize: z.number().optional(),
+    color: colorSchema.describe("Text color"),
+    size: sizeSchema.describe("Text size"),
   },
-  async ({ x, y, text, fontSize }) => {
+  async ({ x, y, text, fontSize, color, size }) => {
     broadcastOperation({
       type: "addText",
       payload: {
@@ -111,6 +194,8 @@ server.tool(
         y,
         text,
         fontSize: fontSize || 20,
+        color,
+        size,
       },
     });
 
@@ -134,8 +219,25 @@ server.tool(
     x: z.number().optional(),
     y: z.number().optional(),
     connectToPrevious: z.boolean().optional(),
+    color: colorSchema.describe("Box stroke color"),
+    labelColor: colorSchema.describe("Box text color"),
+    fill: fillSchema.describe("Box fill style"),
+    dash: dashSchema.describe("Box stroke style"),
+    size: sizeSchema.describe("Box stroke/text size"),
   },
-  async ({ stepNumber, title, description, x, y, connectToPrevious }) => {
+  async ({
+    stepNumber,
+    title,
+    description,
+    x,
+    y,
+    connectToPrevious,
+    color,
+    labelColor,
+    fill,
+    dash,
+    size,
+  }) => {
     const posX = x || stepNumber * 200;
     const posY = y || 200;
 
@@ -148,6 +250,11 @@ server.tool(
         x: posX,
         y: posY,
         connectToPrevious: connectToPrevious !== false,
+        color,
+        labelColor,
+        fill,
+        dash,
+        size,
       },
     });
 

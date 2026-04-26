@@ -116,6 +116,24 @@ To fully test the integration, try the following Claude commands:
    Take a snapshot of the current diagram
    ```
 
+### Supported Style Options
+
+Claude can now pass style options to shape, text, arrow, and flowchart tools.
+
+- **Colors:** `black`, `grey`, `light-violet`, `violet`, `blue`, `light-blue`, `yellow`, `orange`, `green`, `light-green`, `light-red`, `red`, `white`
+- **Fill styles:** `none`, `semi`, `solid`, `pattern`, `fill`
+- **Line styles:** `draw`, `solid`, `dashed`, `dotted`
+- **Sizes:** `s`, `m`, `l`, `xl`
+- **Arrowheads:** `arrow`, `triangle`, `square`, `dot`, `pipe`, `diamond`, `inverted`, `bar`, `none`
+
+For arrows, give created shapes a reusable `id`, then connect those ids:
+
+```text
+Create a blue solid-filled rectangle with id "database" labeled "Database".
+Create a green ellipse with id "api" labeled "API".
+Connect "database" to "api" with a red dashed arrow.
+```
+
 ### Verifying Event Flow
 
 To verify that events are flowing correctly through the system:

@@ -29,6 +29,12 @@ function sizeFromFontSize(fontSize?: number): "s" | "m" | "l" | "xl" {
   return "xl";
 }
 
+function definedStyles(styles: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(styles).filter(([, value]) => value !== undefined)
+  );
+}
+
 export default function TldrawEditor() {
   const editorRef = useRef<Editor | null>(null);
   const shapesRef = useRef<Record<string, TLShapeId>>({});
@@ -58,7 +64,20 @@ export default function TldrawEditor() {
 
         switch (operation.type) {
           case "createShape": {
-            const { shapeType, x, y, width, height, text } = operation.payload; // Create the shape based on the type - tldraw uses "geo" for basic shapes
+            const {
+              id: refId,
+              shapeType,
+              x,
+              y,
+              width,
+              height,
+              text,
+              color,
+              labelColor,
+              fill,
+              dash,
+              size,
+            } = operation.payload; // Create the shape based on the type - tldraw uses "geo" for basic shapes
             const id = createLocalShapeId();
             editor.createShape({
               id,
@@ -79,10 +98,21 @@ export default function TldrawEditor() {
                     ? "diamond"
                     : "rectangle",
                 ...(text ? { richText: toRichText(text) } : {}),
+                ...definedStyles({
+                  color,
+                  labelColor,
+                  fill,
+                  dash,
+                  size,
+                }),
               },
             });
 
             // Store the created shape ID for future reference
+            if (refId) {
+              shapesRef.current[refId] = id;
+            }
+
             if ("stepNumber" in operation.payload) {
               shapesRef.current[`step-${operation.payload.stepNumber}`] = id;
             }
@@ -92,7 +122,16 @@ export default function TldrawEditor() {
           }
 
           case "connectShapes": {
-            const { fromId, toId, arrowType } = operation.payload;
+            const {
+              fromId,
+              toId,
+              arrowType,
+              color,
+              dash,
+              size,
+              arrowheadStart,
+              arrowheadEnd,
+            } = operation.payload;
 
             const actualFromId = shapesRef.current[fromId] || fromId;
             const actualToId = shapesRef.current[toId] || toId;
@@ -123,6 +162,13 @@ export default function TldrawEditor() {
                 end: { x: end.x - start.x, y: end.y - start.y },
                 bend: arrowType === "curved" ? 30 : 0,
                 kind: arrowType === "orthogonal" ? "elbow" : "arc",
+                ...definedStyles({
+                  color,
+                  dash,
+                  size,
+                  arrowheadStart,
+                  arrowheadEnd,
+                }),
               },
             });
 
@@ -131,7 +177,7 @@ export default function TldrawEditor() {
           }
 
           case "addText": {
-            const { x, y, text, fontSize } = operation.payload;
+            const { x, y, text, fontSize, color, size } = operation.payload;
             const id = createLocalShapeId();
 
             editor.createShape({
@@ -141,7 +187,10 @@ export default function TldrawEditor() {
               y,
               props: {
                 richText: toRichText(text),
-                size: sizeFromFontSize(fontSize),
+                size: size || sizeFromFontSize(fontSize),
+                ...definedStyles({
+                  color,
+                }),
               },
             });
 
@@ -149,8 +198,19 @@ export default function TldrawEditor() {
             break;
           }
           case "createFlowchartStep": {
-            const { stepNumber, title, description, x, y, connectToPrevious } =
-              operation.payload;
+            const {
+              stepNumber,
+              title,
+              description,
+              x,
+              y,
+              connectToPrevious,
+              color,
+              labelColor,
+              fill,
+              dash,
+              size,
+            } = operation.payload;
             const id = createLocalShapeId();
             const label = title + (description ? `\n${description}` : "");
 
@@ -164,6 +224,13 @@ export default function TldrawEditor() {
                 h: 80,
                 geo: "rectangle",
                 richText: toRichText(label),
+                ...definedStyles({
+                  color,
+                  labelColor,
+                  fill,
+                  dash,
+                  size,
+                }),
               },
             });
 
@@ -190,6 +257,11 @@ export default function TldrawEditor() {
                   props: {
                     start: { x: 0, y: 0 },
                     end: { x: end.x - start.x, y: end.y - start.y },
+                    ...definedStyles({
+                      color,
+                      dash,
+                      size,
+                    }),
                   },
                 });
               }
