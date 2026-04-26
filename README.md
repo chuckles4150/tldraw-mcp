@@ -139,16 +139,27 @@ Connect "database" to "api" with a red dashed arrow.
 Claude can add review markup with:
 
 - `addStickyNote`: creates a tldraw sticky note
-- `addComment`: creates a comment callout, optionally next to a target shape id
 - `highlightArea`: draws a highlight around a target shape id or explicit area
 
 Example:
 
 ```text
-Review this diagram. Add an open comment on "database" saying "Confirm retention policy".
 Highlight "api" in yellow.
 Add a sticky note at the top saying "Review pass: security concerns".
 ```
+
+### Expanded Drawing Tools
+
+The MCP server also supports:
+
+- **All built-in geo shapes:** cloud, rectangle, ellipse, triangle, diamond, pentagon, hexagon, octagon, star, rhombus, oval, trapezoid, hearts, checkboxes, x-boxes, and directional arrows
+- **Frames:** `createFrame`
+- **Lines:** `createLine`
+- **Media:** `createMedia` for image/video URLs
+- **Embeds and bookmarks:** `createEmbed`, `createBookmark`
+- **Editing:** `updateShape`, `deleteShape`, `clearCanvas`
+- **Grouping and layers:** `groupShapes`, `ungroupShapes`, `reorderShapes`
+- **Pages:** `createPage`, `switchPage`, `deletePage`
 
 ### Verifying Event Flow
 

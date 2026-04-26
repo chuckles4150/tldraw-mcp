@@ -59,17 +59,6 @@ export interface TldrawStickyNotePayload {
   size?: string;
 }
 
-export interface TldrawCommentPayload {
-  id?: string;
-  targetId?: string;
-  x?: number;
-  y?: number;
-  text: string;
-  author?: string;
-  status?: "open" | "resolved";
-  color?: string;
-}
-
 export interface TldrawHighlightPayload {
   id?: string;
   targetId?: string;
@@ -96,7 +85,6 @@ export type TldrawOperationPayload =
   | TldrawTextPayload
   | TldrawFlowchartStepPayload
   | TldrawStickyNotePayload
-  | TldrawCommentPayload
   | TldrawHighlightPayload
   | TldrawSnapshotRequestPayload
   | TldrawSnapshotResponsePayload

@@ -28,6 +28,28 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
+const geoShapeSchema = z.enum([
+  "cloud",
+  "rectangle",
+  "ellipse",
+  "triangle",
+  "diamond",
+  "pentagon",
+  "hexagon",
+  "octagon",
+  "star",
+  "rhombus",
+  "rhombus-2",
+  "oval",
+  "trapezoid",
+  "arrow-right",
+  "arrow-left",
+  "arrow-up",
+  "arrow-down",
+  "x-box",
+  "check-box",
+  "heart",
+]);
 const colorSchema = z
   .enum([
     "black",
@@ -61,6 +83,11 @@ const arrowheadSchema = z
     "none",
   ])
   .optional();
+const pointSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+});
+const shapeRefSchema = z.string().describe("A shape reference id");
 
 server.tool(
   "createShape",
@@ -69,7 +96,7 @@ server.tool(
       .string()
       .optional()
       .describe("A reusable reference id, e.g. database or api, for later arrows"),
-    type: z.enum(["rectangle", "ellipse", "triangle", "diamond"]),
+    type: geoShapeSchema,
     x: z.number(),
     y: z.number(),
     width: z.number(),
@@ -309,50 +336,6 @@ server.tool(
 );
 
 server.tool(
-  "addComment",
-  {
-    id: z
-      .string()
-      .optional()
-      .describe("A reusable reference id for this comment"),
-    targetId: z
-      .string()
-      .optional()
-      .describe("Reference id of the shape being reviewed"),
-    x: z.number().optional(),
-    y: z.number().optional(),
-    text: z.string(),
-    author: z.string().optional(),
-    status: z.enum(["open", "resolved"]).optional(),
-    color: colorSchema.describe("Comment note color"),
-  },
-  async ({ id, targetId, x, y, text, author, status, color }) => {
-    broadcastOperation({
-      type: "addComment",
-      payload: {
-        id,
-        targetId,
-        x,
-        y,
-        text,
-        author,
-        status: status || "open",
-        color,
-      },
-    });
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Added ${status || "open"} comment${targetId ? ` on ${targetId}` : ""}`,
-        },
-      ],
-    };
-  }
-);
-
-server.tool(
   "highlightArea",
   {
     id: z
@@ -392,6 +375,260 @@ server.tool(
           text: `Added highlight${targetId ? ` around ${targetId}` : ""}`,
         },
       ],
+    };
+  }
+);
+
+server.tool(
+  "createFrame",
+  {
+    id: z.string().optional().describe("A reusable reference id for the frame"),
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    name: z.string().optional(),
+    color: colorSchema.describe("Frame color"),
+  },
+  async ({ id, x, y, width, height, name, color }) => {
+    broadcastOperation({
+      type: "createFrame",
+      payload: { id, x, y, width, height, name: name || "", color },
+    });
+
+    return {
+      content: [{ type: "text", text: `Created frame${id ? ` "${id}"` : ""}` }],
+    };
+  }
+);
+
+server.tool(
+  "createLine",
+  {
+    id: z.string().optional().describe("A reusable reference id for the line"),
+    points: z.array(pointSchema).min(2),
+    spline: z.enum(["line", "cubic"]).optional(),
+    color: colorSchema.describe("Line color"),
+    dash: dashSchema.describe("Line style"),
+    size: sizeSchema.describe("Line size"),
+  },
+  async ({ id, points, spline, color, dash, size }) => {
+    broadcastOperation({
+      type: "createLine",
+      payload: { id, points, spline: spline || "line", color, dash, size },
+    });
+
+    return {
+      content: [{ type: "text", text: `Created line${id ? ` "${id}"` : ""}` }],
+    };
+  }
+);
+
+server.tool(
+  "createMedia",
+  {
+    id: z.string().optional().describe("A reusable reference id for the media"),
+    mediaType: z.enum(["image", "video"]),
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    url: z.string(),
+    altText: z.string().optional(),
+  },
+  async ({ id, mediaType, x, y, width, height, url, altText }) => {
+    broadcastOperation({
+      type: "createMedia",
+      payload: { id, mediaType, x, y, width, height, url, altText: altText || "" },
+    });
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Created ${mediaType}${id ? ` "${id}"` : ""}`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "createEmbed",
+  {
+    id: z.string().optional().describe("A reusable reference id for the embed"),
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    url: z.string(),
+  },
+  async ({ id, x, y, width, height, url }) => {
+    broadcastOperation({
+      type: "createEmbed",
+      payload: { id, x, y, width, height, url },
+    });
+
+    return {
+      content: [{ type: "text", text: `Created embed${id ? ` "${id}"` : ""}` }],
+    };
+  }
+);
+
+server.tool(
+  "createBookmark",
+  {
+    id: z.string().optional().describe("A reusable reference id for the bookmark"),
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    url: z.string(),
+  },
+  async ({ id, x, y, width, height, url }) => {
+    broadcastOperation({
+      type: "createBookmark",
+      payload: { id, x, y, width, height, url },
+    });
+
+    return {
+      content: [
+        { type: "text", text: `Created bookmark${id ? ` "${id}"` : ""}` },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "updateShape",
+  {
+    id: shapeRefSchema,
+    x: z.number().optional(),
+    y: z.number().optional(),
+    width: z.number().optional(),
+    height: z.number().optional(),
+    rotation: z.number().optional(),
+    text: z.string().optional(),
+    color: colorSchema,
+    labelColor: colorSchema,
+    fill: fillSchema,
+    dash: dashSchema,
+    size: sizeSchema,
+  },
+  async (payload) => {
+    broadcastOperation({ type: "updateShape", payload });
+
+    return {
+      content: [{ type: "text", text: `Updated shape ${payload.id}` }],
+    };
+  }
+);
+
+server.tool(
+  "deleteShape",
+  {
+    id: shapeRefSchema,
+  },
+  async ({ id }) => {
+    broadcastOperation({ type: "deleteShape", payload: { id } });
+
+    return {
+      content: [{ type: "text", text: `Deleted shape ${id}` }],
+    };
+  }
+);
+
+server.tool("clearCanvas", {}, async () => {
+  broadcastOperation({ type: "clearCanvas", payload: {} });
+
+  return {
+    content: [{ type: "text", text: "Cleared the current canvas" }],
+  };
+});
+
+server.tool(
+  "groupShapes",
+  {
+    ids: z.array(shapeRefSchema).min(2),
+    id: z.string().optional().describe("A reusable reference id for the group"),
+  },
+  async ({ ids, id }) => {
+    broadcastOperation({ type: "groupShapes", payload: { ids, id } });
+
+    return {
+      content: [{ type: "text", text: `Grouped ${ids.length} shapes` }],
+    };
+  }
+);
+
+server.tool(
+  "ungroupShapes",
+  {
+    ids: z.array(shapeRefSchema).min(1),
+  },
+  async ({ ids }) => {
+    broadcastOperation({ type: "ungroupShapes", payload: { ids } });
+
+    return {
+      content: [{ type: "text", text: `Ungrouped ${ids.length} shapes` }],
+    };
+  }
+);
+
+server.tool(
+  "reorderShapes",
+  {
+    ids: z.array(shapeRefSchema).min(1),
+    action: z.enum(["bringToFront", "sendToBack"]),
+  },
+  async ({ ids, action }) => {
+    broadcastOperation({ type: "reorderShapes", payload: { ids, action } });
+
+    return {
+      content: [{ type: "text", text: `Reordered ${ids.length} shapes` }],
+    };
+  }
+);
+
+server.tool(
+  "createPage",
+  {
+    name: z.string(),
+    switchToPage: z.boolean().optional(),
+  },
+  async ({ name, switchToPage }) => {
+    broadcastOperation({ type: "createPage", payload: { name, switchToPage } });
+
+    return {
+      content: [{ type: "text", text: `Created page "${name}"` }],
+    };
+  }
+);
+
+server.tool(
+  "switchPage",
+  {
+    name: z.string(),
+  },
+  async ({ name }) => {
+    broadcastOperation({ type: "switchPage", payload: { name } });
+
+    return {
+      content: [{ type: "text", text: `Switched to page "${name}"` }],
+    };
+  }
+);
+
+server.tool(
+  "deletePage",
+  {
+    name: z.string(),
+  },
+  async ({ name }) => {
+    broadcastOperation({ type: "deletePage", payload: { name } });
+
+    return {
+      content: [{ type: "text", text: `Deleted page "${name}"` }],
     };
   }
 );

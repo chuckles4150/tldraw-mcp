@@ -55,6 +55,33 @@ function getTargetBounds(editor: Editor, targetId?: string) {
   return editor.getShapePageBounds(targetId as TLShapeId);
 }
 
+function toShapeId(refs: Record<string, TLShapeId>, id: string): TLShapeId {
+  return refs[id] || (id as TLShapeId);
+}
+
+function makeLinePoints(points: Array<{ x: number; y: number }>) {
+  const origin = points[0] ?? { x: 0, y: 0 };
+
+  return Object.fromEntries(
+    points.map((point, index) => {
+      const id = index === 0 ? "start" : index === points.length - 1 ? "end" : `point-${index}`;
+      return [
+        id,
+        {
+          id,
+          index: `a${index + 1}`,
+          x: point.x - origin.x,
+          y: point.y - origin.y,
+        },
+      ];
+    })
+  );
+}
+
+function pageByName(editor: Editor, name: string) {
+  return editor.getPages().find((page) => page.name === name);
+}
+
 export default function TldrawEditor() {
   const editorRef = useRef<Editor | null>(null);
   const shapesRef = useRef<Record<string, TLShapeId>>({});
@@ -319,57 +346,6 @@ export default function TldrawEditor() {
             break;
           }
 
-          case "addComment": {
-            const {
-              id: refId,
-              targetId,
-              x,
-              y,
-              text,
-              author,
-              status,
-              color,
-            } = operation.payload;
-            const targetBounds = getTargetBounds(
-              editor,
-              targetId ? shapesRef.current[targetId] || targetId : undefined
-            );
-            const id = createLocalShapeId();
-            const commentText = [
-              status === "resolved" ? "[Resolved]" : "[Open]",
-              author ? `${author}:` : "Comment:",
-              text,
-            ].join(" ");
-
-            editor.createShape({
-              id,
-              type: "note",
-              x: x ?? (targetBounds ? targetBounds.maxX + 24 : 80),
-              y: y ?? (targetBounds ? targetBounds.y : 80),
-              props: {
-                richText: toRichText(commentText),
-                ...definedStyles({
-                  color: color || (status === "resolved" ? "green" : "orange"),
-                  labelColor: status === "resolved" ? "green" : "black",
-                  size: "s",
-                }),
-              },
-              meta: {
-                reviewType: "comment",
-                targetId: targetId || "",
-                status: status || "open",
-                author: author || "",
-              },
-            });
-
-            if (refId) {
-              shapesRef.current[refId] = id;
-            }
-
-            console.log("Created comment with id:", id);
-            break;
-          }
-
           case "highlightArea": {
             const {
               id: refId,
@@ -419,6 +395,288 @@ export default function TldrawEditor() {
             }
 
             console.log("Created highlight with id:", id);
+            break;
+          }
+
+          case "createFrame": {
+            const { id: refId, x, y, width, height, name, color } =
+              operation.payload;
+            const id = createLocalShapeId();
+
+            editor.createShape({
+              id,
+              type: "frame",
+              x,
+              y,
+              props: {
+                w: width,
+                h: height,
+                name: name || "",
+                ...definedStyles({ color }),
+              },
+            });
+
+            if (refId) shapesRef.current[refId] = id;
+            console.log("Created frame with id:", id);
+            break;
+          }
+
+          case "createLine": {
+            const { id: refId, points, spline, color, dash, size } =
+              operation.payload;
+            const id = createLocalShapeId();
+            const origin = points[0] ?? { x: 0, y: 0 };
+
+            editor.createShape({
+              id,
+              type: "line",
+              x: origin.x,
+              y: origin.y,
+              props: {
+                points: makeLinePoints(points),
+                spline: spline || "line",
+                ...definedStyles({ color, dash, size }),
+              },
+            });
+
+            if (refId) shapesRef.current[refId] = id;
+            console.log("Created line with id:", id);
+            break;
+          }
+
+          case "createMedia": {
+            const {
+              id: refId,
+              mediaType,
+              x,
+              y,
+              width,
+              height,
+              url,
+              altText,
+            } = operation.payload;
+            const id = createLocalShapeId();
+
+            editor.createShape({
+              id,
+              type: mediaType,
+              x,
+              y,
+              props:
+                mediaType === "video"
+                  ? {
+                      w: width,
+                      h: height,
+                      url,
+                      assetId: null,
+                      time: 0,
+                      playing: false,
+                      altText: altText || "",
+                    }
+                  : {
+                      w: width,
+                      h: height,
+                      url,
+                      assetId: null,
+                      playing: false,
+                      crop: null,
+                      flipX: false,
+                      flipY: false,
+                      altText: altText || "",
+                    },
+            } as any);
+
+            if (refId) shapesRef.current[refId] = id;
+            console.log("Created media with id:", id);
+            break;
+          }
+
+          case "createEmbed": {
+            const { id: refId, x, y, width, height, url } = operation.payload;
+            const id = createLocalShapeId();
+
+            editor.createShape({
+              id,
+              type: "embed",
+              x,
+              y,
+              props: { w: width, h: height, url },
+            });
+
+            if (refId) shapesRef.current[refId] = id;
+            console.log("Created embed with id:", id);
+            break;
+          }
+
+          case "createBookmark": {
+            const { id: refId, x, y, width, height, url } = operation.payload;
+            const id = createLocalShapeId();
+
+            editor.createShape({
+              id,
+              type: "bookmark",
+              x,
+              y,
+              props: { w: width, h: height, url, assetId: null },
+            });
+
+            if (refId) shapesRef.current[refId] = id;
+            console.log("Created bookmark with id:", id);
+            break;
+          }
+
+          case "updateShape": {
+            const {
+              id: refId,
+              x,
+              y,
+              width,
+              height,
+              rotation,
+              text,
+              color,
+              labelColor,
+              fill,
+              dash,
+              size,
+            } = operation.payload;
+            const id = toShapeId(shapesRef.current, refId);
+            const shape = editor.getShape(id);
+
+            if (!shape) {
+              console.warn("Could not update missing shape:", refId);
+              break;
+            }
+
+            const props: Record<string, unknown> = definedStyles({
+              color,
+              labelColor,
+              fill,
+              dash,
+              size,
+            });
+
+            if (width !== undefined) props.w = width;
+            if (height !== undefined) props.h = height;
+            if (text !== undefined) {
+              if (shape.type === "arrow") props.text = text;
+              else props.richText = toRichText(text);
+            }
+
+            editor.updateShape({
+              id,
+              type: shape.type,
+              ...(x !== undefined ? { x } : {}),
+              ...(y !== undefined ? { y } : {}),
+              ...(rotation !== undefined ? { rotation } : {}),
+              ...(Object.keys(props).length ? { props } : {}),
+            } as any);
+
+            console.log("Updated shape:", id);
+            break;
+          }
+
+          case "deleteShape": {
+            const { id: refId } = operation.payload;
+            const id = toShapeId(shapesRef.current, refId);
+
+            editor.deleteShape(id);
+            for (const [key, value] of Object.entries(shapesRef.current)) {
+              if (value === id) delete shapesRef.current[key];
+            }
+
+            console.log("Deleted shape:", id);
+            break;
+          }
+
+          case "clearCanvas": {
+            const ids = [...editor.getCurrentPageShapeIds()];
+            editor.deleteShapes(ids);
+            shapesRef.current = {};
+            console.log("Cleared canvas");
+            break;
+          }
+
+          case "groupShapes": {
+            const { ids, id: refId } = operation.payload;
+            const shapeIds = ids.map((shapeId: string) =>
+              toShapeId(shapesRef.current, shapeId)
+            );
+            const groupId = createLocalShapeId();
+
+            editor.groupShapes(shapeIds, { groupId });
+            if (refId) shapesRef.current[refId] = groupId;
+
+            console.log("Grouped shapes:", shapeIds);
+            break;
+          }
+
+          case "ungroupShapes": {
+            const { ids } = operation.payload;
+            const shapeIds = ids.map((shapeId: string) =>
+              toShapeId(shapesRef.current, shapeId)
+            );
+
+            editor.ungroupShapes(shapeIds);
+            console.log("Ungrouped shapes:", shapeIds);
+            break;
+          }
+
+          case "reorderShapes": {
+            const { ids, action } = operation.payload;
+            const shapeIds = ids.map((shapeId: string) =>
+              toShapeId(shapesRef.current, shapeId)
+            );
+
+            if (action === "bringToFront") editor.bringToFront(shapeIds);
+            else editor.sendToBack(shapeIds);
+
+            console.log("Reordered shapes:", shapeIds);
+            break;
+          }
+
+          case "createPage": {
+            const { name, switchToPage } = operation.payload;
+            const existing = pageByName(editor, name);
+
+            if (!existing) editor.createPage({ name });
+            const page = pageByName(editor, name);
+            if (switchToPage && page) {
+              editor.setCurrentPage(page.id);
+              shapesRef.current = {};
+            }
+
+            console.log("Created page:", name);
+            break;
+          }
+
+          case "switchPage": {
+            const { name } = operation.payload;
+            const page = pageByName(editor, name);
+
+            if (!page) {
+              console.warn("Could not switch to missing page:", name);
+              break;
+            }
+
+            editor.setCurrentPage(page.id);
+            shapesRef.current = {};
+            console.log("Switched page:", name);
+            break;
+          }
+
+          case "deletePage": {
+            const { name } = operation.payload;
+            const page = pageByName(editor, name);
+
+            if (!page) {
+              console.warn("Could not delete missing page:", name);
+              break;
+            }
+
+            editor.deletePage(page.id);
+            shapesRef.current = {};
+            console.log("Deleted page:", name);
             break;
           }
 
