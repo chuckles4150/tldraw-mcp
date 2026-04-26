@@ -211,10 +211,8 @@ server.tool("getSnapshot", {}, async () => {
   });
 });
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
-
-// Create and start the HTTP server (after MCP server is initialized)
+// Create and start the HTTP server in the same process as the MCP server.
+// The EventBus is in-memory, so MCP tools and SSE clients must share this process.
 const httpServer = createServer((req, res) => {
   logHttpToFile(`[HTTP Server] Received ${req.method} request to ${req.url}`);
   if (req.url === "/api/tldraw-events" && req.method === "GET") {
@@ -306,7 +304,6 @@ const httpServer = createServer((req, res) => {
   }
 });
 
-// Listen on port 3002
 httpServer.listen(3002, () => {
   logHttpToFile("[HTTP Server] HTTP Server running on port 3002");
   logHttpToFile(
@@ -327,3 +324,11 @@ httpServer.listen(3002, () => {
     );
   });
 });
+
+httpServer.on("error", (error) => {
+  logHttpToFile(`[HTTP Server] Failed to start: ${String(error)}`);
+  process.exit(1);
+});
+
+const transport = new StdioServerTransport();
+await server.connect(transport);

@@ -7,9 +7,10 @@ This is the MCP server component for the tldraw-Claude integration. It handles c
 This server consists of two main components:
 
 1. **MCP Server (index.ts)**: Handles function calls from Claude via stdin/stdout
-2. **HTTP Server (httpServer.ts)**: Provides SSE endpoints for frontend communication
+2. **HTTP/SSE bridge (index.ts)**: Provides SSE endpoints for frontend communication
 
-These components communicate through an EventBus that manages event propagation.
+These components run in the same Node process and communicate through an
+in-memory EventBus that manages event propagation.
 
 ## Getting Started
 
@@ -34,34 +35,28 @@ These components communicate through an EventBus that manages event propagation.
 
 ### Running the Servers
 
-You need to run both servers for the system to work properly:
+For Claude Desktop, configure Claude to run the compiled `dist/index.js` file;
+Claude Desktop owns the MCP stdio process and the HTTP/SSE bridge starts inside
+that same process.
 
-1. **Start the HTTP Server (in one terminal):**
+For a manual smoke test, run the combined server process:
 
-   ```powershell
-   npm run start:http
-   ```
+```powershell
+npm start
+```
 
-   This starts the HTTP server on port 3002, which handles SSE communication with the frontend.
-
-2. **Start the MCP Server (in another terminal):**
-
-   ```powershell
-   npm start
-   ```
-
-   This starts the MCP server that communicates with Claude Desktop.
+This starts the MCP server that communicates with Claude Desktop and the HTTP
+server on port 3002 that handles SSE communication with the frontend. Do not
+leave this running while Claude Desktop is also configured to start the MCP
+server, because the second process will conflict on port 3002.
 
 ### Development Mode
 
 For development with automatic restarts:
 
 ```powershell
-# For the MCP server (in one terminal)
+# For the combined MCP/HTTP server
 npm run dev
-
-# For the HTTP server (in another terminal)
-npm run dev:http
 ```
 
 ## Claude Desktop Configuration
@@ -86,23 +81,20 @@ Replace `PATH_TO_COMPILED_JS_FILE` with the absolute path to the compiled JavaSc
 For development with automatic restarts:
 
 ```powershell
-# For the MCP server
+# For the combined MCP/HTTP server
 npm run dev
-
-# For the HTTP server
-npm run dev:http
 ```
 
-## Build Scripts
+## NPM Scripts
 
-- **build.bat**: Compiles TypeScript code into JavaScript in the `dist` folder
-- **start.bat**: Builds the code and then starts the MCP server
-- **start-http.bat**: Builds the code and then starts the HTTP server
+- **npm run build**: Compiles TypeScript code into JavaScript in the `dist` folder
+- **npm start**: Starts the combined MCP/HTTP server
+- **npm run dev**: Starts the combined MCP/HTTP server with automatic restarts
 
 ## Architecture
 
 - **MCP Server (index.ts)**: Handles function calls from Claude via stdin/stdout
-- **HTTP Server (httpServer.ts)**: Provides SSE endpoints for frontend communication
+- **HTTP/SSE bridge (index.ts)**: Provides SSE endpoints for frontend communication
 - **EventBus**: Manages internal event propagation and provides type-safe communication
 
 ## Architecture
@@ -115,7 +107,7 @@ npm run dev:http
    - Defines available tools that Claude can use
    - Sends and receives operations through the EventBus
 
-2. **HTTP Server (httpServer.ts)**
+2. **HTTP/SSE bridge (index.ts)**
 
    - Provides SSE endpoints for frontend communication
    - Listens on port 3002
@@ -187,7 +179,7 @@ The system includes extensive logging to help diagnose issues:
 
 1. **Type errors:** If you encounter "any" type errors, check the interface definitions in `eventBus.ts`
 2. **Event handling:** Make sure event names match between components (`tldraw-operation`, `snapshot-response`, etc.)
-3. **Port conflicts:** If port 3002 is already in use, modify the port in `httpServer.ts` and update the API routes
+3. **Port conflicts:** If port 3002 is already in use, modify the port in `index.ts` and update the API routes
 
 ## Development Tips
 

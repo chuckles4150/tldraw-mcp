@@ -47,23 +47,20 @@ This project integrates [tldraw](https://tldraw.com/) with Claude AI using the M
 
 ### Starting the Application
 
-You need to start three components in the following order:
+Claude Desktop starts the combined MCP/HTTP server from the configured
+`server/dist/index.js` file. Do not also run `npm start` manually while Claude
+Desktop is using the MCP server, or both processes will try to use port 3002.
 
-1. **Start the HTTP Server:**
+You need to start the frontend and Claude Desktop:
 
-   ```powershell
-   # In the server directory
-   npm run start:http
-   ```
-
-2. **Start the Next.js Frontend:**
+1. **Start the Next.js Frontend:**
 
    ```powershell
    # In the root directory
    npm run dev
    ```
 
-3. **Start Claude Desktop and enable the MCP Server:**
+2. **Start Claude Desktop and enable the MCP Server:**
 
    - Launch Claude Desktop
    - Open settings (gear icon)
@@ -135,7 +132,7 @@ When you issue a command in Claude, you should see a sequence of logs showing th
 
 ### Troubleshooting
 
-- **HTTP Server not starting:** Check if port 3002 is already in use
+- **HTTP/SSE bridge not starting:** Check if port 3002 is already in use
 - **Claude not connecting:** Verify the path in `claude_desktop_config.json`
 - **Diagram not updating:** Check browser console for errors in the event stream
 - **Types of operations not working:** Check log messages for errors in parsing or handling specific operations
@@ -143,7 +140,7 @@ When you issue a command in Claude, you should see a sequence of logs showing th
 
 #### Common Issues and Solutions
 
-- **Port conflicts:** If port 3002 is in use, edit `httpServer.ts` to use a different port, and update the API routes accordingly
+- **Port conflicts:** If port 3002 is in use, edit `server/src/index.ts` to use a different port, and update the API routes accordingly
 - **Timing issues:** If operations seem to drop, increase logging and check for race conditions
 - **Type errors:** If you encounter "any" type errors, define proper interfaces in `eventBus.ts`
 - **Missing dependencies:** Run `npm install` in both the root and server directories
@@ -271,37 +268,21 @@ The EventBus pattern makes the system more extensible:
    cd ..
    ```
 
-2. The easiest way to start everything is to use the provided script:
+2. Build the server and start the frontend:
 
    ```powershell
-   # This will start all components in separate windows
-   ./start-all.bat
-   ```
-
-   Or if you prefer to start each component manually:
-
-   ```powershell
-   # Start the MCP server (for Claude)
+   # Build the combined MCP/HTTP server for Claude Desktop
    cd server
    npm run build
-   npm start  # Or use ./start.bat
 
-   # In another terminal, start the HTTP server
-   cd server
-   npm run start:http  # Or use ./start-http.bat
-
-   # In a third terminal, start the Next.js frontend
+   # Start the Next.js frontend
+   cd ..
    npm run dev
    ```
 
 3. Configure Claude Desktop to connect to your MCP server:
 
-   ```powershell
-   # Run the setup script to automatically configure Claude Desktop
-   ./setup-claude.bat
-   ```
-
-   Or manually update your Claude Desktop configuration file (typically located at `%AppData%\Claude\claude_desktop_config.json`):
+   Manually update your Claude Desktop configuration file (typically located at `%AppData%\Claude\claude_desktop_config.json`):
 
    ```json
    {
@@ -324,13 +305,9 @@ The EventBus pattern makes the system more extensible:
 
 - **server/**: MCP server implementation
   - **src/**: TypeScript source files
-    - **index.ts**: Main MCP server with function definitions
-    - **httpServer.ts**: HTTP server for SSE communication
+    - **index.ts**: Combined MCP server and HTTP/SSE bridge
     - **eventBus.ts**: Event bus implementation with TypeScript interfaces
   - **dist/**: Compiled JavaScript files (generated)
-  - **build.bat**: Script to compile TypeScript
-  - **start.bat**: Script to build and run the MCP server
-  - **start-http.bat**: Script to build and run the HTTP server
 - **app/**: Next.js frontend
   - **components/TldrawEditor.tsx**: Frontend component with tldraw integration
   - **api/events/route.ts**: Next.js API route for SSE events
