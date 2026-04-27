@@ -1,7 +1,7 @@
 "use client";
 
-import { Editor, Tldraw, type TLShapeId } from "@tldraw/tldraw";
-import "@tldraw/tldraw/tldraw.css";
+import { Editor, Tldraw, b64Vecs, type TLShapeId } from "tldraw";
+import "tldraw/tldraw.css";
 import { useEffect, useRef } from "react";
 
 function createLocalShapeId(): TLShapeId {
@@ -36,16 +36,18 @@ function definedStyles(styles: Record<string, unknown>) {
 }
 
 function makeBoxHighlightSegments(width: number, height: number) {
+  const points = [
+    { x: 0, y: 0, z: 0.5 },
+    { x: width, y: 0, z: 0.5 },
+    { x: width, y: height, z: 0.5 },
+    { x: 0, y: height, z: 0.5 },
+    { x: 0, y: 0, z: 0.5 },
+  ];
+
   return [
     {
-      type: "free",
-      points: [
-        { x: 0, y: 0, z: 0.5 },
-        { x: width, y: 0, z: 0.5 },
-        { x: width, y: height, z: 0.5 },
-        { x: 0, y: height, z: 0.5 },
-        { x: 0, y: 0, z: 0.5 },
-      ],
+      type: "free" as const,
+      path: b64Vecs.encodePoints(points),
     },
   ];
 }
@@ -69,7 +71,7 @@ function makeLinePoints(points: Array<{ x: number; y: number }>) {
         id,
         {
           id,
-          index: `a${index + 1}`,
+          index: `a${index + 1}` as never,
           x: point.x - origin.x,
           y: point.y - origin.y,
         },
@@ -82,7 +84,15 @@ function pageByName(editor: Editor, name: string) {
   return editor.getPages().find((page) => page.name === name);
 }
 
-export default function TldrawEditor() {
+type TldrawEditorProps = {
+  onEditorMount?: (editor: Editor) => void;
+  onDocumentChange?: () => void;
+};
+
+export default function TldrawEditor({
+  onEditorMount,
+  onDocumentChange,
+}: TldrawEditorProps) {
   const editorRef = useRef<Editor | null>(null);
   const shapesRef = useRef<Record<string, TLShapeId>>({});
   useEffect(() => {
@@ -694,7 +704,7 @@ export default function TldrawEditor() {
           case "requestSnapshot": {
             const { requestId } = operation.payload;
 
-            const snapshot = editor.store.getSnapshot();
+            const snapshot = editor.getSnapshot();
 
             fetch("/api/snapshot", {
               method: "POST",
@@ -839,7 +849,7 @@ export default function TldrawEditor() {
           break;
 
         case "snapshot":
-          console.log("[TldrawEditor] Snapshot:", editor.store.getSnapshot());
+          console.log("[TldrawEditor] Snapshot:", editor.getSnapshot());
           break;
 
         case "reload":
@@ -868,6 +878,13 @@ export default function TldrawEditor() {
       <Tldraw
         onMount={(editor) => {
           editorRef.current = editor;
+          onEditorMount?.(editor);
+          editor.store.listen(
+            () => {
+              onDocumentChange?.();
+            },
+            { source: "user", scope: "document" }
+          );
           console.log("Tldraw editor mounted");
         }}
       />
