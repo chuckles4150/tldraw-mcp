@@ -3,6 +3,9 @@
 import type { Editor } from "tldraw";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import WelcomeModal, {
+  type RecentFileEntry,
+} from "./components/WelcomeModal";
 
 const TldrawEditor = dynamic(() => import("./components/TldrawEditor"), {
   ssr: false,
@@ -12,6 +15,9 @@ const DIRECTORY_STORE_DB = "localdraft-handles";
 const DIRECTORY_STORE_NAME = "handles";
 const DIRECTORY_HANDLE_KEY = "workspace-directory";
 const SUPPORTED_EXTENSIONS = new Set([".tldr", ".json"]);
+const RECENT_FILES_STORAGE_KEY = "localdraft-recent-files";
+const WELCOME_DISMISSED_KEY = "localdraft-welcome-dismissed";
+const RECENT_FILES_LIMIT = 8;
 
 type FileTreeFile = {
   kind: "file";
@@ -304,6 +310,51 @@ function normalizeSnapshot(
   return value;
 }
 
+function loadRecentFiles(): RecentFileEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_FILES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (entry): entry is RecentFileEntry =>
+        entry &&
+        typeof entry.name === "string" &&
+        typeof entry.path === "string" &&
+        typeof entry.openedAt === "number"
+    );
+  } catch {
+    return [];
+  }
+}
+
+function persistRecentFiles(entries: RecentFileEntry[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      RECENT_FILES_STORAGE_KEY,
+      JSON.stringify(entries)
+    );
+  } catch {
+    // localStorage may be full or disabled; ignore.
+  }
+}
+
+function findFileNodeByPath(
+  nodes: FileTreeNode[],
+  path: string
+): FileTreeFile | null {
+  for (const node of nodes) {
+    if (node.kind === "file" && node.path === path) return node;
+    if (node.kind === "directory") {
+      const found = findFileNodeByPath(node.children, path);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 function isLikelySnapshot(value: unknown) {
   if (!value || typeof value !== "object") return false;
 
@@ -443,9 +494,38 @@ export default function Home() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [message, setMessage] = useState("");
   const [loadingTree, setLoadingTree] = useState(false);
+  const [recentFiles, setRecentFiles] = useState<RecentFileEntry[]>([]);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
 
   const currentFileLabel = activeFile?.name ?? "Untitled";
   const isSupported = useMemo(isFileSystemAccessSupported, []);
+
+  useEffect(() => {
+    setRecentFiles(loadRecentFiles());
+    if (typeof window !== "undefined") {
+      const dismissed =
+        window.sessionStorage.getItem(WELCOME_DISMISSED_KEY) === "1";
+      if (!dismissed) setWelcomeOpen(true);
+    }
+  }, []);
+
+  const closeWelcome = useCallback(() => {
+    setWelcomeOpen(false);
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(WELCOME_DISMISSED_KEY, "1");
+    }
+  }, []);
+
+  const recordRecentFile = useCallback((file: { name: string; path: string }) => {
+    setRecentFiles((current) => {
+      const next: RecentFileEntry[] = [
+        { name: file.name, path: file.path, openedAt: Date.now() },
+        ...current.filter((entry) => entry.path !== file.path),
+      ].slice(0, RECENT_FILES_LIMIT);
+      persistRecentFiles(next);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     editorRef.current = editor;
@@ -606,6 +686,7 @@ export default function Home() {
         setDirty(false);
         setSaveStatus("saved");
         setMessage(`Opened ${fileNode.name}`);
+        recordRecentFile({ name: fileNode.name, path: fileNode.path });
         window.setTimeout(() => {
           suppressDirtyRef.current = false;
         }, 0);
@@ -615,7 +696,21 @@ export default function Home() {
         setMessage("Could not open that file. Check that it contains valid JSON.");
       }
     },
-    [confirmDiscard]
+    [confirmDiscard, recordRecentFile]
+  );
+
+  const openRecentFile = useCallback(
+    (path: string) => {
+      const node = findFileNodeByPath(tree, path);
+      if (!node) {
+        setMessage(
+          "That file isn't in the current folder. Choose its folder first."
+        );
+        return;
+      }
+      void openFile(node);
+    },
+    [tree, openFile]
   );
 
   const saveActiveFile = useCallback(async () => {
@@ -712,13 +807,21 @@ export default function Home() {
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-[#f9f9fe] text-[#1a1c1f] selection:bg-[#04724d] selection:text-white">
+      <WelcomeModal
+        open={welcomeOpen}
+        hasFolder={Boolean(directoryHandle)}
+        recentFiles={recentFiles}
+        onClose={closeWelcome}
+        onChooseFolder={chooseFolder}
+        onOpenRecent={openRecentFile}
+      />
       <header className="fixed top-0 z-50 flex h-14 w-full items-center justify-between border-b border-slate-200/70 bg-white/90 px-4 backdrop-blur-xl">
         <div className="flex min-w-0 items-center gap-3">
           <span className="shrink-0 text-lg font-bold tracking-tight text-slate-900">
             LocalDraft
           </span>
           <span className="hidden rounded border border-[#cbe3f2] bg-[#cbe3f2]/50 px-2 py-0.5 font-mono text-xs font-medium tracking-wide text-[#4b616e] sm:inline">
-            local
+            v2.1
           </span>
           <div className="min-w-0 border-l border-slate-200 pl-3">
             <div className="truncate text-sm font-medium text-slate-900">
