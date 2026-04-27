@@ -99,7 +99,17 @@ export default function TldrawEditor() {
     };
 
     eventSource.onerror = (error) => {
-      console.error("[TldrawEditor] EventSource error:", error);
+      const state =
+        eventSource.readyState === EventSource.CONNECTING
+          ? "reconnecting"
+          : eventSource.readyState === EventSource.CLOSED
+          ? "closed"
+          : "open";
+
+      console.warn("[TldrawEditor] EventSource connection issue:", {
+        state,
+        error,
+      });
     };
     eventSource.addEventListener("tldraw-operation", (event) => {
       const operation = JSON.parse(event.data);
@@ -457,34 +467,41 @@ export default function TldrawEditor() {
             } = operation.payload;
             const id = createLocalShapeId();
 
-            editor.createShape({
-              id,
-              type: mediaType,
-              x,
-              y,
-              props:
-                mediaType === "video"
-                  ? {
-                      w: width,
-                      h: height,
-                      url,
-                      assetId: null,
-                      time: 0,
-                      playing: false,
-                      altText: altText || "",
-                    }
-                  : {
-                      w: width,
-                      h: height,
-                      url,
-                      assetId: null,
-                      playing: false,
-                      crop: null,
-                      flipX: false,
-                      flipY: false,
-                      altText: altText || "",
-                    },
-            } as any);
+            if (mediaType === "video") {
+              editor.createShape({
+                id,
+                type: "video",
+                x,
+                y,
+                props: {
+                  w: width,
+                  h: height,
+                  url,
+                  assetId: null,
+                  time: 0,
+                  playing: false,
+                  altText: altText || "",
+                },
+              });
+            } else {
+              editor.createShape({
+                id,
+                type: "image",
+                x,
+                y,
+                props: {
+                  w: width,
+                  h: height,
+                  url,
+                  assetId: null,
+                  playing: false,
+                  crop: null,
+                  flipX: false,
+                  flipY: false,
+                  altText: altText || "",
+                },
+              });
+            }
 
             if (refId) shapesRef.current[refId] = id;
             console.log("Created media with id:", id);
@@ -563,14 +580,16 @@ export default function TldrawEditor() {
               else props.richText = toRichText(text);
             }
 
-            editor.updateShape({
+            const update = {
               id,
               type: shape.type,
               ...(x !== undefined ? { x } : {}),
               ...(y !== undefined ? { y } : {}),
               ...(rotation !== undefined ? { rotation } : {}),
               ...(Object.keys(props).length ? { props } : {}),
-            } as any);
+            } as Parameters<Editor["updateShape"]>[0];
+
+            editor.updateShape(update);
 
             console.log("Updated shape:", id);
             break;
@@ -721,14 +740,139 @@ export default function TldrawEditor() {
       console.log("[TldrawEditor] Received debug event:", event.data);
     });
 
+    const handleCanvasCommand = (event: Event) => {
+      if (!editorRef.current) return;
+
+      const editor = editorRef.current;
+      const { type } = (event as CustomEvent<{ type: string }>).detail;
+      const center = editor.getViewportPageBounds().center;
+      const animation = { animation: { duration: 160 } };
+
+      switch (type) {
+        case "select":
+          editor.setCurrentTool("select");
+          break;
+
+        case "draw":
+          editor.setCurrentTool("draw");
+          break;
+
+        case "rectangle": {
+          editor.createShape({
+            id: createLocalShapeId(),
+            type: "geo",
+            x: center.x - 80,
+            y: center.y - 45,
+            props: {
+              w: 160,
+              h: 90,
+              geo: "rectangle",
+              fill: "semi",
+              color: "green",
+            },
+          });
+          break;
+        }
+
+        case "ellipse": {
+          editor.createShape({
+            id: createLocalShapeId(),
+            type: "geo",
+            x: center.x - 70,
+            y: center.y - 45,
+            props: {
+              w: 140,
+              h: 90,
+              geo: "ellipse",
+              fill: "semi",
+              color: "blue",
+            },
+          });
+          break;
+        }
+
+        case "text": {
+          editor.createShape({
+            id: createLocalShapeId(),
+            type: "text",
+            x: center.x - 80,
+            y: center.y - 16,
+            props: {
+              richText: toRichText("Text"),
+              size: "m",
+            },
+          });
+          break;
+        }
+
+        case "stickyNote": {
+          editor.createShape({
+            id: createLocalShapeId(),
+            type: "note",
+            x: center.x - 110,
+            y: center.y - 80,
+            props: {
+              richText: toRichText("Review note"),
+              color: "yellow",
+              size: "m",
+            },
+          });
+          break;
+        }
+
+        case "highlight": {
+          editor.createShape({
+            id: createLocalShapeId(),
+            type: "highlight",
+            x: center.x - 120,
+            y: center.y - 60,
+            props: {
+              segments: makeBoxHighlightSegments(240, 120),
+              isComplete: true,
+              isPen: false,
+              color: "yellow",
+              size: "xl",
+            },
+          });
+          break;
+        }
+
+        case "clear":
+          editor.deleteShapes([...editor.getCurrentPageShapeIds()]);
+          shapesRef.current = {};
+          break;
+
+        case "fit":
+          editor.zoomToFit(animation);
+          break;
+
+        case "snapshot":
+          console.log("[TldrawEditor] Snapshot:", editor.store.getSnapshot());
+          break;
+
+        case "reload":
+          window.location.reload();
+          break;
+
+        default:
+          console.warn("Unknown canvas command:", type);
+      }
+    };
+
+    window.addEventListener("localdraft-canvas-command", handleCanvasCommand);
+
     return () => {
       console.log("[TldrawEditor] Closing EventSource connection");
+      window.removeEventListener(
+        "localdraft-canvas-command",
+        handleCanvasCommand
+      );
       eventSource.close();
     };
   }, []);
 
   return (
-    <div style={{ height: "calc(100vh - 80px)", width: "100%" }}>
+    <div style={{ height: "100%", width: "100%" }}>
       <Tldraw
         onMount={(editor) => {
           editorRef.current = editor;

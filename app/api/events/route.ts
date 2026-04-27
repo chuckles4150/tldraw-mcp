@@ -12,12 +12,31 @@ export async function GET(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
+      let isClosed = false;
       const send = (event: string, data: Record<string, unknown>) => {
+        if (isClosed) return;
         console.log(`[API] Events route: Sending event: ${event}`, data);
-        controller.enqueue(
-          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
-        );
-      }; 
+        try {
+          controller.enqueue(
+            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+          );
+        } catch (error) {
+          isClosed = true;
+          console.warn("[API] Events route: Stream closed while sending", error);
+        }
+      };
+      const close = () => {
+        if (isClosed) return;
+        isClosed = true;
+        try {
+          controller.close();
+        } catch {
+          // The browser may already have closed the SSE connection.
+        }
+      };
+
+      req.signal.addEventListener("abort", close);
+
       send("debug", {
         message: "API route initialized",
         timestamp: new Date().toISOString(),
@@ -119,6 +138,7 @@ export async function GET(req: NextRequest) {
         };
 
         while (true) {
+          if (isClosed || req.signal.aborted) break;
           const { done, value } = await reader.read();
           if (done) break;
 
@@ -129,14 +149,13 @@ export async function GET(req: NextRequest) {
         buffer += decoder.decode();
         processEvents();
       } catch (error) {
-        console.error("Error connecting to SSE endpoint:", error);
-        send("error", { message: "Failed to connect to tldraw server" });
-        controller.close();
+        if (!isClosed && !req.signal.aborted) {
+          console.error("Error connecting to SSE endpoint:", error);
+          send("error", { message: "Failed to connect to tldraw server" });
+        }
+      } finally {
+        close();
       }
-
-      req.signal.addEventListener("abort", () => {
-        controller.close();
-      });
     },
   });
 
