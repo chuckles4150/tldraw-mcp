@@ -204,12 +204,25 @@ function hasFutureSchemaVersion(
 }
 
 const RECORD_TYPES_WITH_PROPS = new Set(["shape", "binding", "asset"]);
+const SHAPES_WITH_RICH_TEXT = new Set(["arrow", "geo", "note", "text"]);
 
-function normalizeImportedRecord(record: TldrawRecord): TldrawRecord {
-  const next: TldrawRecord = {
+function plainTextToRichText(text: string) {
+  const lines = text.split("\n");
+  const content = lines.map((line) =>
+    line
+      ? { type: "paragraph", content: [{ type: "text", text: line }] }
+      : { type: "paragraph" }
+  );
+  return { type: "doc", content };
+}
+
+function normalizeImportedRecord(
+  record: TldrawRecord
+): TldrawRecord & Record<string, unknown> {
+  const next = {
     ...record,
     props: record.props ? { ...record.props } : record.props,
-  };
+  } as TldrawRecord & Record<string, unknown>;
 
   // Only shape/binding/asset records carry a `props` field in the current
   // tldraw schema. Strip stray `props` from other record types (e.g. page,
@@ -218,17 +231,35 @@ function normalizeImportedRecord(record: TldrawRecord): TldrawRecord {
     delete next.props;
   }
 
-  // Arrow shapes use `richText` only (tldraw v3+ removed the legacy `text` prop).
-  // If an export contains both, drop `text` so schema validation passes.
-  // Files with only legacy `text` are handled by the AddRichText schema migration.
+  // Arrow/geo/note/text shapes require `richText` in tldraw v3+. Older exports
+  // (and some external generators) emit a plain `text` string instead. Convert
+  // it on the fly and drop `text` so schema validation passes.
   if (
     next.typeName === "shape" &&
-    next.type === "arrow" &&
-    next.props &&
-    "text" in next.props &&
-    next.props.richText
+    typeof next.type === "string" &&
+    SHAPES_WITH_RICH_TEXT.has(next.type) &&
+    next.props
   ) {
-    delete next.props.text;
+    const props = next.props;
+    if (!props.richText && typeof props.text === "string") {
+      props.richText = plainTextToRichText(props.text);
+    }
+    if ("text" in props && props.richText) {
+      delete props.text;
+    }
+  }
+
+  // Backfill required fields the schema expects but some external exporters omit.
+  if (next.typeName === "document") {
+    if (typeof next.gridSize !== "number") next.gridSize = 10;
+    if (typeof next.name !== "string") next.name = "";
+    if (!next.meta || typeof next.meta !== "object") next.meta = {};
+  }
+
+  if (next.typeName === "page") {
+    if (typeof next.name !== "string") next.name = "Page";
+    if (typeof next.index !== "string") next.index = "a1";
+    if (!next.meta || typeof next.meta !== "object") next.meta = {};
   }
 
   return next;
