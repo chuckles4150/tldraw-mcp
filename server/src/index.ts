@@ -25,7 +25,7 @@ logHttpToFile("[Combined Server] Starting MCP and HTTP server...");
 // Create MCP Server
 const server = new McpServer({
   name: "TldrawServer",
-  version: "1.0.0",
+  version: "1.1.0",
 });
 
 const geoShapeSchema = z.enum([
@@ -537,14 +537,6 @@ server.tool(
     };
   }
 );
-
-server.tool("clearCanvas", {}, async () => {
-  broadcastOperation({ type: "clearCanvas", payload: {} });
-
-  return {
-    content: [{ type: "text", text: "Cleared the current canvas" }],
-  };
-});
 
 server.tool(
   "groupShapes",

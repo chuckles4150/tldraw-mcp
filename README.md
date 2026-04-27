@@ -157,7 +157,7 @@ The MCP server also supports:
 - **Lines:** `createLine`
 - **Media:** `createMedia` for image/video URLs
 - **Embeds and bookmarks:** `createEmbed`, `createBookmark`
-- **Editing:** `updateShape`, `deleteShape`, `clearCanvas`
+- **Editing:** `updateShape`, `deleteShape`
 - **Grouping and layers:** `groupShapes`, `ungroupShapes`, `reorderShapes`
 - **Pages:** `createPage`, `switchPage`, `deletePage`
 
@@ -399,7 +399,6 @@ The following tools are available to Claude via the MCP server:
 - `createBookmark`: Create a URL bookmark card
 - `updateShape`: Move, resize, rotate, relabel, or restyle an existing shape
 - `deleteShape`: Delete a shape by reference id
-- `clearCanvas`: Clear the current canvas
 - `groupShapes`: Group two or more referenced shapes
 - `ungroupShapes`: Ungroup one or more referenced groups
 - `reorderShapes`: Bring shapes to the front or send them to the back

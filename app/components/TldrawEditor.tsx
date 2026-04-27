@@ -608,14 +608,6 @@ export default function TldrawEditor() {
             break;
           }
 
-          case "clearCanvas": {
-            const ids = [...editor.getCurrentPageShapeIds()];
-            editor.deleteShapes(ids);
-            shapesRef.current = {};
-            console.log("Cleared canvas");
-            break;
-          }
-
           case "groupShapes": {
             const { ids, id: refId } = operation.payload;
             const shapeIds = ids.map((shapeId: string) =>

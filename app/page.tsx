@@ -30,7 +30,6 @@ const mcpTools = [
   { name: "createBookmark", description: "Create a URL bookmark card." },
   { name: "updateShape", description: "Move, resize, rotate, relabel, or restyle an existing shape." },
   { name: "deleteShape", description: "Delete a shape by reference id." },
-  { name: "clearCanvas", description: "Clear the current canvas." },
   { name: "groupShapes", description: "Group two or more referenced shapes." },
   { name: "ungroupShapes", description: "Ungroup one or more referenced groups." },
   { name: "reorderShapes", description: "Bring referenced shapes to the front or send them to the back." },
@@ -52,7 +51,7 @@ export default function Home() {
               LocalDraft
             </span>
             <span className="rounded border border-[#cbe3f2] bg-[#cbe3f2]/50 px-2 py-0.5 font-mono text-xs font-medium tracking-wide text-[#4b616e]">
-              v1.0
+              v1.1
             </span>
             <span className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 font-mono text-[11px] font-medium text-emerald-700 sm:flex">
               <span className="pulse-emerald h-2 w-2 rounded-full bg-emerald-500" />
