@@ -1,18 +1,29 @@
 import { EventEmitter } from "events";
 
 export interface TldrawShapePayload {
+  id?: string;
   shapeType: string;
   x: number;
   y: number;
   width: number;
   height: number;
   text?: string;
+  color?: string;
+  fill?: string;
+  dash?: string;
+  size?: string;
+  labelColor?: string;
 }
 
 export interface TldrawConnectPayload {
   fromId: string;
   toId: string;
   arrowType?: "straight" | "curved" | "orthogonal";
+  color?: string;
+  dash?: string;
+  size?: string;
+  arrowheadStart?: string;
+  arrowheadEnd?: string;
 }
 
 export interface TldrawTextPayload {
@@ -20,6 +31,8 @@ export interface TldrawTextPayload {
   y: number;
   text: string;
   fontSize?: number;
+  color?: string;
+  size?: string;
 }
 
 export interface TldrawFlowchartStepPayload {
@@ -29,6 +42,32 @@ export interface TldrawFlowchartStepPayload {
   x: number;
   y: number;
   connectToPrevious?: boolean;
+  color?: string;
+  fill?: string;
+  dash?: string;
+  size?: string;
+  labelColor?: string;
+}
+
+export interface TldrawStickyNotePayload {
+  id?: string;
+  x: number;
+  y: number;
+  text: string;
+  color?: string;
+  labelColor?: string;
+  size?: string;
+}
+
+export interface TldrawHighlightPayload {
+  id?: string;
+  targetId?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  color?: string;
+  size?: string;
 }
 
 export interface TldrawSnapshotRequestPayload {
@@ -45,6 +84,8 @@ export type TldrawOperationPayload =
   | TldrawConnectPayload
   | TldrawTextPayload
   | TldrawFlowchartStepPayload
+  | TldrawStickyNotePayload
+  | TldrawHighlightPayload
   | TldrawSnapshotRequestPayload
   | TldrawSnapshotResponsePayload
   | Record<string, unknown>;

@@ -116,6 +116,51 @@ To fully test the integration, try the following Claude commands:
    Take a snapshot of the current diagram
    ```
 
+### Supported Style Options
+
+Claude can now pass style options to shape, text, arrow, and flowchart tools.
+
+- **Colors:** `black`, `grey`, `light-violet`, `violet`, `blue`, `light-blue`, `yellow`, `orange`, `green`, `light-green`, `light-red`, `red`, `white`
+- **Fill styles:** `none`, `semi`, `solid`, `pattern`, `fill`
+- **Line styles:** `draw`, `solid`, `dashed`, `dotted`
+- **Sizes:** `s`, `m`, `l`, `xl`
+- **Arrowheads:** `arrow`, `triangle`, `square`, `dot`, `pipe`, `diamond`, `inverted`, `bar`, `none`
+
+For arrows, give created shapes a reusable `id`, then connect those ids:
+
+```text
+Create a blue solid-filled rectangle with id "database" labeled "Database".
+Create a green ellipse with id "api" labeled "API".
+Connect "database" to "api" with a red dashed arrow.
+```
+
+### Reviewing Mode
+
+Claude can add review markup with:
+
+- `addStickyNote`: creates a tldraw sticky note
+- `highlightArea`: draws a highlight around a target shape id or explicit area
+
+Example:
+
+```text
+Highlight "api" in yellow.
+Add a sticky note at the top saying "Review pass: security concerns".
+```
+
+### Expanded Drawing Tools
+
+The MCP server also supports:
+
+- **All built-in geo shapes:** cloud, rectangle, ellipse, triangle, diamond, pentagon, hexagon, octagon, star, rhombus, oval, trapezoid, hearts, checkboxes, x-boxes, and directional arrows
+- **Frames:** `createFrame`
+- **Lines:** `createLine`
+- **Media:** `createMedia` for image/video URLs
+- **Embeds and bookmarks:** `createEmbed`, `createBookmark`
+- **Editing:** `updateShape`, `deleteShape`, `clearCanvas`
+- **Grouping and layers:** `groupShapes`, `ungroupShapes`, `reorderShapes`
+- **Pages:** `createPage`, `switchPage`, `deletePage`
+
 ### Verifying Event Flow
 
 To verify that events are flowing correctly through the system:
