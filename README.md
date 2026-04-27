@@ -387,9 +387,25 @@ This mapping is handled automatically in the TldrawEditor component.
 The following tools are available to Claude via the MCP server:
 
 - `createShape`: Create basic shapes (rectangle, ellipse, triangle, diamond)
-- `connectShapes`: Connect shapes with arrows
+- `connectShapes`: Connect referenced shapes with arrows
 - `addText`: Add standalone text elements
 - `createFlowchartStep`: Create a flowchart step (with optional connection to previous step)
+- `addStickyNote`: Add a styled sticky note
+- `highlightArea`: Highlight a shape or canvas region
+- `createFrame`: Create a named frame around a canvas area
+- `createLine`: Draw straight or cubic lines from points
+- `createMedia`: Add image or video media from a URL
+- `createEmbed`: Embed external content from a URL
+- `createBookmark`: Create a URL bookmark card
+- `updateShape`: Move, resize, rotate, relabel, or restyle an existing shape
+- `deleteShape`: Delete a shape by reference id
+- `clearCanvas`: Clear the current canvas
+- `groupShapes`: Group two or more referenced shapes
+- `ungroupShapes`: Ungroup one or more referenced groups
+- `reorderShapes`: Bring shapes to the front or send them to the back
+- `createPage`: Create a page and optionally switch to it
+- `switchPage`: Switch to an existing page by name
+- `deletePage`: Delete a page by name
 - `getSnapshot`: Get a snapshot of the current diagram
 
 ## Technology Stack
